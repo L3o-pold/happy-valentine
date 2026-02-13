@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Verification</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .captcha-widget {
+            background: #fff;
+            border-radius: 3px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .captcha-widget:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .captcha-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .checkbox {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #c1c1c1;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            background: #fff;
+            position: relative;
+            overflow: visible;
+        }
+
+        .checkbox:hover {
+            border-color: #999;
+            transform: scale(1.05);
+        }
+
+        .checkbox:active {
+            transform: scale(0.95);
+        }
+
+        .checkbox.checked {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            border-color: #4caf50;
+            border-radius: 2px;
+            animation: checkBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes checkBounce {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.3); }
+            50% { transform: scale(0.9); }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .checkbox svg {
+            width: 18px;
+            height: 18px;
+            opacity: 0;
+            transform: scale(0) rotate(-45deg);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .checkbox.checked svg {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        .checkbox.spinning {
+            border-radius: 50%;
+            border: 3px solid #e0e0e0;
+            border-top-color: #4285f4;
+            background: transparent;
+            animation: spin 0.8s linear infinite;
+            width: 28px;
+            height: 28px;
+        }
+
+        .checkbox.spinning svg {
+            opacity: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .checkbox.checked .particle {
+            animation: particleBurst 0.6s ease-out forwards;
+        }
+
+        @keyframes particleBurst {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0);
+            }
+        }
+
+        .captcha-text {
+            font-size: 16px;
+            color: #333;
+            font-weight: 400;
+        }
+
+        .captcha-right {
+            text-align: right;
+        }
+
+        .recaptcha-logo {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 5px;
+        }
+
+        .recaptcha-text {
+            font-size: 10px;
+            color: #9e9e9e;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #4285f4 0%, #3267d6 100%);
+            color: #fff;
+            padding: 20px;
+            position: relative;
+        }
+
+        .modal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.3;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 400;
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        .modal-subtitle {
+            font-size: 24px;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            background: #e0e0e0;
+        }
+
+        .image-cell {
+            aspect-ratio: 1;
+            background: #f5f5f5;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .image-cell:hover {
+            transform: scale(1.02);
+            z-index: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .image-cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .image-cell:hover img {
+            transform: scale(1.1);
+        }
+
+        .image-cell.selected::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(66, 133, 244, 0.3);
+            border: 3px solid #4285f4;
+        }
+
+        .image-cell.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 24px;
+            height: 24px;
+            background: #4285f4;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-icon {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .footer-icon:hover {
+            opacity: 1;
+        }
+
+        .verify-btn {
+            background: #4285f4;
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .verify-btn:hover {
+            background: #3367d6;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+        }
+
+        .verify-btn:active {
+            transform: translateY(0);
+        }
+
+        .verify-btn.shake {
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: #fff;
+            padding: 30px 50px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 2500;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .error-message.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .error-icon {
+            width: 60px;
+            height: 60px;
+            background: #f44336;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+
+        .error-icon svg {
+            width: 30px;
+            height: 30px;
+            stroke: white;
+            stroke-width: 3;
+        }
+
+        .error-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .error-subtext {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .valentine-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 50%, #ff9a9e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.8s ease;
+            overflow: hidden;
+        }
+
+        .valentine-page::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 20 C30 0 0 20 0 45 C0 70 50 100 50 100 C50 100 100 70 100 45 C100 20 70 0 50 20' fill='%23ffffff' fill-opacity='0.1'/%3E%3C/svg%3E");
+            background-size: 80px 80px;
+            animation: floatHearts 20s linear infinite;
+        }
+
+        @keyframes floatHearts {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(5deg); }
+        }
+
+        .valentine-page.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .valentine-content {
+            text-align: center;
+            z-index: 1;
+            padding: 40px;
+            animation: fadeInUp 1s ease 0.5s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .big-heart {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            position: relative;
+            animation: heartbeat 1.2s ease-in-out infinite;
+        }
+
+        .big-heart svg {
+            width: 100%;
+            height: 100%;
+            fill: #e91e63;
+            filter: drop-shadow(0 10px 30px rgba(233, 30, 99, 0.4));
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+
+        .valentine-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            color: #c2185b;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+            to { text-shadow: 2px 2px 20px rgba(233, 30, 99, 0.5); }
+        }
+
+        .valentine-subtitle {
+            font-family: 'Roboto', sans-serif;
+            font-size: 20px;
+            color: #880e4f;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .valentine-message {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            font-size: 18px;
+            color: #555;
+            line-height: 1.6;
+            animation: slideIn 1s ease 1s both;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .floating-hearts {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .floating-heart {
+            position: absolute;
+            font-size: 24px;
+            animation: floatUp 8s linear infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="captcha-widget" id="captchaWidget">
+            <div class="captcha-left">
+                <div class="checkbox" id="checkbox">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <span class="captcha-text">I'm not a robot</span>
+            </div>
+            <div class="captcha-right">
+                <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" alt="recaptcha-logo">
+                <div class="recaptcha-text">reCAPTCHA</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Select all images with</div>
+                <div class="modal-subtitle">your valentine</div>
+            </div>
+            <div class="image-grid" id="imageGrid">
+                <!-- Images will be generated here -->
+            </div>
+            <div class="modal-footer">
+                <div class="footer-icons">
+                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                </div>
+                <button class="verify-btn" id="verifyBtn">Verify</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="error-message" id="errorMessage">
+        <div class="error-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </div>
+        <div class="error-text">Please try again</div>
+        <div class="error-subtext">You must select all you images with your valentine</div>
+    </div>
+
+    <div class="valentine-page" id="valentinePage">
+        <div class="floating-hearts" id="floatingHearts"></div>
+        <div class="valentine-content">
+            <div class="big-heart">
+                <svg viewBox="0 0 100 100">
+                    <path d="M50 20 C30 0 0 20 0 45 C0 70 50 100 50 100 C50 100 100 70 100 45 C100 20 70 0 50 20"/>
+                </svg>
+            </div>
+            <h1 class="valentine-title">Happy Valentine's Day!</h1>
+            <p class="valentine-subtitle">You passed the verification test 💕</p>
+            <div class="valentine-message">
+                Roses are red, violets are blue,<br>
+                You clicked the captcha,<br>
+                And proved you're you!<br><br>
+                <em>Thanks for being my favorite human.</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const captchaWidget = document.getElementById('captchaWidget');
+        const checkbox = document.getElementById('checkbox');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const imageGrid = document.getElementById('imageGrid');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        let selectedCount = 0;
+        const totalImages = 9;
+
+        // Generate placeholder images (9 cells)
+        const placeholderColors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+            '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739'
+        ];
+
+        placeholderColors.forEach((color, index) => {
+            const cell = document.createElement('div');
+            cell.className = 'image-cell';
+            cell.innerHTML = `
+                <svg viewBox="0 0 100 100" style="background: ${color};">
+                    <text x="50" y="55" text-anchor="middle" fill="white" font-size="20" font-weight="bold">Photo ${index + 1}</text>
+                </svg>
+            `;
+            cell.addEventListener('click', () => {
+                cell.classList.toggle('selected');
+                if (cell.classList.contains('selected')) {
+                    selectedCount++;
+                } else {
+                    selectedCount--;
+                }
+            });
+            imageGrid.appendChild(cell);
+        });
+
+        function createParticles() {
+            const colors = ['#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107'];
+            const particleCount = 12;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+                const angle = (i / particleCount) * 360;
+                const distance = 25 + Math.random() * 15;
+                const tx = Math.cos(angle * Math.PI / 180) * distance;
+                const ty = Math.sin(angle * Math.PI / 180) * distance;
+
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                particle.style.marginLeft = '-3px';
+                particle.style.marginTop = '-3px';
+
+                checkbox.appendChild(particle);
+
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        captchaWidget.addEventListener('click', () => {
+            if (checkbox.classList.contains('checked')) return;
+
+            checkbox.style.transform = 'scale(0.9)';
+
+            setTimeout(() => {
+                checkbox.style.transform = 'scale(1)';
+                checkbox.classList.add('spinning');
+            }, 100);
+
+            setTimeout(() => {
+                checkbox.classList.remove('spinning');
+                modalOverlay.classList.add('active');
+            }, 1200);
+        });
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('active');
+                resetSelection();
+            }
+        });
+
+        function resetSelection() {
+            selectedCount = 0;
+            document.querySelectorAll('.image-cell').forEach(cell => {
+                cell.classList.remove('selected');
+            });
+        }
+
+        function createFloatingHearts() {
+            const container = document.getElementById('floatingHearts');
+            const hearts = ['❤', '💖', '💕', '💗', '💝', '💘'];
+
+            for (let i = 0; i < 20; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'floating-heart';
+                heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+                heart.style.left = Math.random() * 100 + '%';
+                heart.style.animationDelay = Math.random() * 8 + 's';
+                heart.style.animationDuration = (6 + Math.random() * 4) + 's';
+                container.appendChild(heart);
+            }
+        }
+
+        verifyBtn.addEventListener('click', () => {
+            if (selectedCount !== totalImages) {
+                errorMessage.classList.add('show');
+                setTimeout(() => {
+                    errorMessage.classList.remove('show');
+                }, 2000);
+                return;
+            }
+
+            modalOverlay.classList.remove('active');
+
+            setTimeout(() => {
+                checkbox.classList.add('checked');
+                createParticles();
+            }, 200);
+
+            setTimeout(() => {
+                createFloatingHearts();
+                document.getElementById('valentinePage').classList.add('show');
+            }, 800);
+        });
+    </script>
+</body>
+</html>
