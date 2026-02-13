@@ -585,7 +585,7 @@
             </div>
             <div class="modal-footer">
                 <div class="footer-icons">
-                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+                    <svg id="reload" class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
                         <path d="M23 4v6h-6M1 20v-6h6"/>
                         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
@@ -632,29 +632,78 @@
         const imageGrid = document.getElementById('imageGrid');
         const verifyBtn = document.getElementById('verifyBtn');
         const errorMessage = document.getElementById('errorMessage');
-        let selectedCount = 0;
+        let selectedCells = new Set();
+        let humanCells = new Set();
         const totalImages = 9;
+        const humansCount = 6; // Number of human images to show
+        const catsCount = 3;   // Number of cat images to show
 
-        // Generate placeholder images (9 cells)
-        const placeholderColors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-            '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739'
-        ];
+        // Configuration for available images
+        const humansImages = 30; // Total human images available
+        const catsImages = 30;   // Total cat images available
 
-        placeholderColors.forEach((color, index) => {
-            const cell = document.createElement('div');
-            cell.className = 'image-cell';
-            cell.innerHTML = `<img src="images/${index + 1}.jpeg" alt="Photo">`;
-            cell.addEventListener('click', () => {
-                cell.classList.toggle('selected');
-                if (cell.classList.contains('selected')) {
-                    selectedCount++;
-                } else {
-                    selectedCount--;
-                }
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function generateGrid() {
+            // Clear existing grid
+            imageGrid.innerHTML = '';
+            selectedCells.clear();
+            humanCells.clear();
+
+            // Create array of image objects
+            let images = [];
+
+            // Add human images
+            const humanIndices = shuffleArray([...Array(humansImages).keys()]).slice(0, humansCount);
+            humanIndices.forEach(index => {
+                images.push({
+                    src: `images/human/${index + 1}.jpeg`,
+                    isHuman: true
+                });
             });
-            imageGrid.appendChild(cell);
-        });
+
+            // Add cat images
+            const catIndices = shuffleArray([...Array(catsImages).keys()]).slice(0, catsCount);
+            catIndices.forEach(index => {
+                images.push({
+                    src: `images/cat/${index + 1}.jpeg`,
+                    isHuman: false
+                });
+            });
+
+            // Shuffle all images
+            images = shuffleArray(images);
+
+            // Create grid cells
+            images.forEach((image, index) => {
+                const cell = document.createElement('div');
+                cell.className = 'image-cell';
+                cell.dataset.index = index;
+                cell.dataset.isHuman = image.isHuman;
+                cell.innerHTML = `<img src="${image.src}" alt="Photo">`;
+
+                if (image.isHuman) {
+                    humanCells.add(index);
+                }
+
+                cell.addEventListener('click', () => {
+                    cell.classList.toggle('selected');
+                    if (cell.classList.contains('selected')) {
+                        selectedCells.add(index);
+                    } else {
+                        selectedCells.delete(index);
+                    }
+                });
+
+                imageGrid.appendChild(cell);
+            });
+        }
 
         function createParticles() {
             const colors = ['#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107'];
@@ -695,6 +744,7 @@
 
             setTimeout(() => {
                 checkbox.classList.remove('spinning');
+                generateGrid(); // Generate new random grid each time
                 modalOverlay.classList.add('active');
             }, 1200);
         });
@@ -706,11 +756,14 @@
             }
         });
 
+        // Add click handlers to footer icons to regenerate grid
+        document.getElementById('reload').addEventListener('click', () => {
+            generateGrid();
+        });
+
         function resetSelection() {
-            selectedCount = 0;
-            document.querySelectorAll('.image-cell').forEach(cell => {
-                cell.classList.remove('selected');
-            });
+            selectedCells.clear();
+            generateGrid();
         }
 
         function createFloatingHearts() {
@@ -729,7 +782,13 @@
         }
 
         verifyBtn.addEventListener('click', () => {
-            if (selectedCount !== totalImages) {
+            // Check if all selected cells are humans (no cats selected)
+            const selectedHumanCount = Array.from(selectedCells).filter(idx =>
+                humanCells.has(idx)
+            ).length;
+
+            // Must select exactly all human images and no cat images
+            if (selectedCells.size !== humanCells.size || selectedHumanCount !== humanCells.size) {
                 errorMessage.classList.add('show');
                 setTimeout(() => {
                     errorMessage.classList.remove('show');
