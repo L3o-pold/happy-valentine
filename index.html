@@ -588,17 +588,6 @@
                         <path d="M23 4v6h-6M1 20v-6h6"/>
                         <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
-                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                    <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="16" x2="12" y2="12"/>
-                        <line x1="12" y1="8" x2="12.01" y2="8"/>
-                    </svg>
                 </div>
                 <button class="verify-btn" id="verifyBtn">Verify</button>
             </div>
@@ -654,11 +643,7 @@
         placeholderColors.forEach((color, index) => {
             const cell = document.createElement('div');
             cell.className = 'image-cell';
-            cell.innerHTML = `
-                <svg viewBox="0 0 100 100" style="background: ${color};">
-                    <text x="50" y="55" text-anchor="middle" fill="white" font-size="20" font-weight="bold">Photo ${index + 1}</text>
-                </svg>
-            `;
+            cell.innerHTML = `<img src="images/${index + 1}.jpeg" alt="Photo">`;
             cell.addEventListener('click', () => {
                 cell.classList.toggle('selected');
                 if (cell.classList.contains('selected')) {
